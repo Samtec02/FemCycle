@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FemCycle-Period and Ovulation Tracker</title>
+    <style>
+        /* === CSS Reset & Variables === */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg: #f9f5f7;
+            --surface: #ffffff;
+            --primary: #d47b9e;
+            --primary-dark: #b85e82;
+            --primary-light: #f0dfe8;
+            --text: #3d2c36;
+            --text-light: #7a6570;
+            --shadow: 0 8px 30px rgba(180, 120, 140, 0.15);
+            --radius: 20px;
+            --card-radius: 16px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            --safe-color: #6bc2a0;
+            --unsafe-color: #d47b9e;
+            --fertile-color: #e6a85c;
+            --ovulation-color: #b30000; /* Deep Red */
+        }
+
+        .dark {
+            --bg: #1e1519;
+            --surface: #2d1f25;
+            --primary: #d47b9e;
+            --primary-dark: #c06b8f;
+            --primary-light: #3d2a33;
+            --text: #f0e4e9;
+            --text-light: #b8a2ad;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background var(--transition), color var(--transition);
+            padding: 12px;
+        }
+
+        /* === App Container (phone frame) === */
+        #app {
+            max-width: 420px;
+            width: 100%;
+            background: var(--bg);
+            border-radius: 36px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            position: relative;
+            height: 780px;
+            display: flex;
+            flex-direction: column;
+            transition: background var(--transition);
+        }
+
+        /* === Screens === */
+        .screen {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            padding: 20px 16px 10px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            padding-bottom: 80px;
+            transition: opacity 0.25s ease;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .screen::-webkit-scrollbar {
+            width: 4px;
+        }
+        .screen::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .screen::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 10px;
+        }
+
+        /* === Onboarding === */
+        #onboarding {
+            padding: 30px 20px;
+            justify-content: center;
+            align-items: stretch;
+        }
+
+        #onboarding h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 1.3;
+        }
+
+        #onboarding .sub {
+            font-size: 15px;
+            color: var(--text-light);
+            margin-bottom: 24px;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: var(--text);
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 1.5px solid var(--primary-light);
+            background: var(--surface);
+            color: var(--text);
+            font-size: 15px;
+            transition: border var(--transition);
+            outline: none;
+            font-family: var(--font);
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 16px;
+            border-radius: 40px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background var(--transition), transform 0.15s;
+            width: 100%;
+            margin-top: 10px;
+            font-family: var(--font);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 1.5px solid var(--primary);
+            padding: 14px;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            width: 100%;
+            font-family: var(--font);
+        }
+
+        .btn-outline:active {
+            background: var(--primary-light);
+        }
+
+        .btn-small {
+            padding: 10px 20px;
+            width: auto;
+            border-radius: 30px;
+            font-size: 14px;
+        }
+
+        /* === Cards === */
+        .card {
+            background: var(--surface);
+            border-radius: var(--card-radius);
+            padding: 18px 16px;
+            box-shadow: var(--shadow);
+            margin-bottom: 14px;
+            transition: background var(--transition), box-shadow var(--transition);
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-light);
+            letter-spacing: 0.3px;
+            margin-bottom: 6px;
+        }
+
+        .card-value {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .card-sub {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .flex-row .card {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .icon-em {
+            font-size: 24px;
+            margin-right: 6px;
+        }
+
+        /* === Countdown Cards === */
+        .countdown-card {
+            background: var(--surface);
+            border-radius: var(--card-radius);
+            padding: 16px 14px;
+            box-shadow: var(--shadow);
+            margin-bottom: 12px;
+            text-align: center;
+            border: 2px solid var(--primary-light);
+            transition: background var(--transition), box-shadow var(--transition);
+        }
+
+        .countdown-card.period-countdown {
+            border-color: var(--unsafe-color);
+        }
+
+        .countdown-card.fertile-countdown {
+            border-color: var(--fertile-color);
+        }
+
+        .countdown-card.ovulation-countdown {
+            border-color: var(--ovulation-color);
+        }
+
+        .countdown-card .countdown-title {
+            font-size: 13px;
+            color: var(--text-light);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .countdown-display {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin: 6px 0;
+        }
+
+        .countdown-unit {
+            text-align: center;
+        }
+
+        .countdown-unit .number {
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .countdown-unit .label {
+            font-size: 10px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .period-countdown .countdown-unit .number {
+            color: var(--unsafe-color);
+        }
+        .fertile-countdown .countdown-unit .number {
+            color: var(--fertile-color);
+        }
+        .ovulation-countdown .countdown-unit .number {
+            color: var(--ovulation-color);
+        }
+
+        .countdown-status {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            margin-top: 2px;
+        }
+
+        /* === Calendar === */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0 14px;
+        }
+
+        .calendar-header button {
+            background: var(--surface);
+            border: none;
+            font-size: 20px;
+            padding: 8px 14px;
+            border-radius: 30px;
+            cursor: pointer;
+            color: var(--text);
+            box-shadow: var(--shadow);
+            transition: background var(--transition);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+        }
+
+        .calendar-grid .day-name {
+            font-weight: 500;
+            font-size: 12px;
+            color: var(--text-light);
+            padding: 6px 0;
+        }
+
+        .calendar-grid .day {
+            padding: 10px 0;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            background: transparent;
+            transition: background 0.2s;
+            cursor: default;
+            position: relative;
+        }
+
+        .calendar-grid .day.today {
+            background: var(--primary);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .calendar-grid .day.safe-day {
+            background: var(--safe-color);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .calendar-grid .day.unsafe-period {
+            background: var(--unsafe-color);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .calendar-grid .day.fertile-day {
+            background: var(--fertile-color);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .calendar-grid .day.ovulation-day {
+            background: var(--ovulation-color); /* Deep Red */
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .calendar-grid .day.tapable {
+            cursor: pointer;
+        }
+
+        .calendar-grid .day.tapable:active {
+            opacity: 0.7;
+        }
+
+        .calendar-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 14px 0 8px;
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .calendar-legend span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        /* === Bottom Nav === */
+        #bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0 16px;
+            background: var(--surface);
+            border-top: 1px solid var(--primary-light);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            transition: background var(--transition);
+            border-radius: 0 0 36px 36px;
+            z-index: 10;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 4px 10px;
+            border-radius: 30px;
+            transition: all var(--transition);
+            background: transparent;
+            border: none;
+            font-family: var(--font);
+            gap: 2px;
+        }
+
+        .nav-item span {
+            font-size: 22px;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-item.active span {
+            color: var(--primary);
+        }
+
+        /* === Fertility & History === */
+        .fertility-message {
+            background: var(--primary-light);
+            border-radius: var(--card-radius);
+            padding: 16px;
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.6;
+            margin: 12px 0;
+        }
+
+        .disclaimer {
+            font-size: 13px;
+            color: var(--text-light);
+            background: rgba(200, 150, 170, 0.15);
+            padding: 14px;
+            border-radius: var(--card-radius);
+            line-height: 1.5;
+            margin-top: 10px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--primary-light);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .symptom-tag {
+            display: inline-block;
+            background: var(--primary-light);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            margin: 3px 4px 3px 0;
+            color: var(--text);
+        }
+
+        /* === Settings / Privacy === */
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--primary-light);
+        }
+
+        .settings-row:last-child {
+            border-bottom: none;
+        }
+
+        .toggle {
+            width: 48px;
+            height: 28px;
+            background: #ccc;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: background 0.3s;
+            position: relative;
+            border: none;
+            padding: 0;
+        }
+
+        .toggle.active {
+            background: var(--primary);
+        }
+
+        .toggle::after {
+            content: '';
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s;
+        }
+
+        .toggle.active::after {
+            transform: translateX(20px);
+        }
+
+        .pin-input {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .pin-input input {
+            width: 48px;
+            height: 52px;
+            text-align: center;
+            font-size: 22px;
+            border-radius: 12px;
+            border: 1.5px solid var(--primary-light);
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        /* === Misc === */
+        .text-center {
+            text-align: center;
+        }
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .mt-12 {
+            margin-top: 12px;
+        }
+        .mb-8 {
+            margin-bottom: 8px;
+        }
+        .gap-6 {
+            gap: 6px;
+        }
+
+        .badge {
+            background: var(--primary-light);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--primary-dark);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Notification status indicator */
+        .notif-status {
+            font-size: 12px;
+            color: var(--text-light);
+            padding: 4px 12px;
+            border-radius: 30px;
+            background: var(--primary-light);
+            display: inline-block;
+            margin-top: 4px;
+        }
+        .notif-status.active {
+            background: #d4e8d4;
+            color: #2d6a4f;
+        }
+        .notif-status.inactive {
+            background: #f0d4d4;
+            color: #a52a2a;
+        }
+
+        /* responsive */
+        @media (max-width: 440px) {
+            #app {
+                border-radius: 0;
+                height: 100vh;
+                max-width: 100%;
+            }
+            #bottom-nav {
+                border-radius: 0;
+            }
+            body {
+                padding: 0;
+            }
+        }
+
+        .summary-card {
+            background: var(--surface);
+            border-radius: var(--card-radius);
+            padding: 20px;
+            margin: 12px 0;
+            box-shadow: var(--shadow);
+        }
+
+        .summary-card p {
+            margin: 6px 0;
+            font-size: 15px;
+        }
+
+        .summary-card strong {
+            color: var(--primary-dark);
+        }
+
+        .period-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 500;
+            margin: 4px;
+        }
+        .period-status.safe {
+            background: var(--safe-color);
+            color: #fff;
+        }
+        .period-status.unsafe {
+            background: var(--unsafe-color);
+            color: #fff;
+        }
+        .period-status.fertile {
+            background: var(--fertile-color);
+            color: #fff;
+        }
+        .period-status.ovulation {
+            background: var(--ovulation-color);
+            color: #fff;
+        }
+
+        .notify-btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background var(--transition), transform 0.15s;
+            font-family: var(--font);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .notify-btn:active {
+            transform: scale(0.97);
+        }
+
+        .notify-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .notify-btn-container {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .countdown-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        /* Info cards */
+        .info-card {
+            border-radius: var(--card-radius);
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            color: #fff;
+        }
+        .info-card.ovulation-info {
+            background: var(--ovulation-color);
+        }
+        .info-card.fertile-info {
+            background: var(--fertile-color);
+        }
+        .info-card.unsafe-info {
+            background: var(--unsafe-color);
+        }
+        .info-card.safe-info {
+            background: var(--safe-color);
+        }
+        .info-card.period-info {
+            background: var(--unsafe-color);
+        }
+        .info-card strong {
+            font-weight: 700;
+        }
+        .info-card .sub {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+        
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            background: var(--surface);
+            border-radius: var(--card-radius);
+            padding: 8px;
+            box-shadow: var(--shadow);
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 30px;
+            border: none;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition);
+            background: transparent;
+            color: var(--text-light);
+            font-family: var(--font);
+        }
+        .mode-btn.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: var(--shadow);
+        }
+        .mode-btn:active {
+            transform: scale(0.97);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+
+        <!-- ===== ONBOARDING SCREEN ===== -->
+        <div id="onboarding" class="screen active">
+            <h1>🌸 FemCycle-Period and Ovulation Tracker</h1>
+            <p class="sub">Your personal cycle assistant</p>
+
+            <div class="input-group">
+                <label>First day of your most recent period</label>
+                <input type="date" id="lastPeriod" value="2026-08-21">
+            </div>
+            <div class="input-group">
+                <label>How many days does your period usually last?</label>
+                <select id="periodDuration">
+                    <option value="3">3 days</option>
+                    <option value="4">4 days</option>
+                    <option value="5" selected>5 days</option>
+                    <option value="6">6 days</option>
+                    <option value="7">7 days</option>
+                    <option value="8">8 days</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>What is your goal?</label>
+                <select id="tryingToConceive">
+                    <option value="no">🚫 Prevent Pregnancy (Avoid)</option>
+                    <option value="yes">💕 Trying to Conceive (Get Pregnant)</option>
+                </select>
+            </div>
+            <button class="btn-primary" id="startBtn">Begin My Cycle</button>
+            <p style="font-size:12px; color:var(--text-light); margin-top:12px; text-align:center;">
+                📅 28-day cycle: Period = Days 1–[selected] | Ovulation = Day 14 (Deep Red) | Next Period = Days 28–[selected+27]
+            </p>
+        </div>
+
+        <!-- ===== HOME DASHBOARD ===== -->
+        <div id="home" class="screen">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h2 style="font-size:18px; font-weight:600; line-height:1.2;">🌸 FemCycle<br>Period & Ovulation Tracker</h2>
+                <span style="font-size:13px; color:var(--text-light);" id="greeting">Hello</span>
+            </div>
+
+            <!-- MODE SELECTOR -->
+            <div class="mode-selector">
+                <button class="mode-btn" id="modePrevent" data-mode="prevent">🚫 Prevent</button>
+                <button class="mode-btn" id="modeConceive" data-mode="conceive">💕 Conceive</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📅 Next Period</div>
+                <div class="card-value" id="nextPeriodDisplay">—</div>
+                <div class="card-sub" id="nextPeriodSub">Starts on Day 28</div>
+                <div style="margin-top:6px;">
+                    <span class="period-status safe">✅ Safe</span>
+                    <span class="period-status unsafe">🩸 Unsafe</span>
+                    <span class="period-status fertile">🌱 Fertile</span>
+                    <span class="period-status ovulation">🔮 Ovulation</span>
+                </div>
+            </div>
+
+            <!-- PERIOD INFO -->
+            <div class="info-card period-info">
+                🩸 <strong>Period: Days 1–${state.periodDuration || 5}</strong> (UNSAFE)
+                <div class="sub">Bleeding days — avoid unprotected sex if preventing pregnancy.</div>
+            </div>
+
+            <!-- OVULATION INFO -->
+            <div class="info-card ovulation-info">
+                🔮 <strong>Ovulation: Day 14</strong> (Peak Fertility — Deep Red)
+                <div class="sub">Fixed — always on Day 14 of your cycle. You'll get a notification on this date.</div>
+            </div>
+
+            <!-- FERTILE WINDOW INFO -->
+            <div class="info-card fertile-info">
+                🌱 <strong>Fertile Window</strong> (UNSAFE)
+                <div class="sub">3 days before ovulation + ovulation + 3 days after ovulation</div>
+            </div>
+
+            <!-- SAFE DAYS INFO -->
+            <div class="info-card safe-info">
+                ✅ <strong>Safe Days: Days ${state.periodDuration + 1 || 6}–10 & 18–27</strong> (Low risk)
+                <div class="sub">Low risk of pregnancy, but no method is 100% guaranteed.</div>
+            </div>
+
+            <!-- ===== PERIOD COUNTDOWN ===== -->
+            <div class="countdown-card period-countdown" id="periodCountdown">
+                <div class="countdown-title">🩸 Countdown to Next Period (Day 28)</div>
+                <div class="countdown-display">
+                    <div class="countdown-unit">
+                        <div class="number" id="pDays">--</div>
+                        <div class="label">Days</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="number" id="pHours">--</div>
+                        <div class="label">Hours</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="number" id="pMinutes">--</div>
+                        <div class="label">Minutes</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="number" id="pSeconds">--</div>
+                        <div class="label">Seconds</div>
+                    </div>
+                </div>
+                <div class="countdown-status" id="pStatus">Loading...</div>
+            </div>
+
+            <!-- ===== FERTILE WINDOW COUNTDOWN ===== -->
+            <div class="countdown-card fertile-countdown" id="fertileCountdown">
+                <div class="countdown-title">🌱 Countdown to Fertile Window (Day 11)</div>
+                <div class="countdown-display">
+                    <div class="countdown-unit">
+                        <div class="number" id="fDays">--</div>
+                        <div class="label">Days</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="number" id="fHours">--</div>
+                        <div class="label">Hours</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="number" id="fMinutes">--</div>
+                        <div class="label">Minutes</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="number" id="fSeconds">--</div>
+                        <div class="label">Seconds</div>
+                    </div>
+                </div>
+                <div class="countdown-status" id="fStatus">Loading...</div>
+            </div>
+
+            <!-- ===== OVULATION COUNTDOWN ===== -->
+            <div class="countdown-card ovulation-countdown" id="ovulationCountdown">
+                <div class="countdown-title">🔮 Countdown to Ovulation (Day 14)</div>
+                <div class="countdown-display">
+                    <div class="countdown-unit">
+                        <div class="number" id="oDays">--</div>
+                        <div class="label">Days</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="number" id="oHours">--</div>
+                        <div class="label">Hours</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="number" id="oMinutes">--</div>
+                        <div class="label">Minutes</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="number" id="oSeconds">--</div>
+                        <div class="label">Seconds</div>
+                    </div>
+                </div>
+                <div class="countdown-status" id="oStatus">Loading...</div>
+            </div>
+
+            <div class="flex-row">
+                <div class="card">
+                    <div class="card-title">🔄 Cycle Day</div>
+                    <div class="card-value" id="cycleDayDisplay">—</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">🔮 Ovulation Day</div>
+                    <div class="card-value" id="ovulationDisplay">Day 14</div>
+                    <div class="card-sub">Fixed</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🌱 Fertile Window</div>
+                <div class="card-value" id="fertileWindowDisplay">Days 11–17</div>
+                <div class="card-sub">3 days before ovulation + ovulation + 3 days after ovulation</div>
+            </div>
+
+            <div class="card" style="background:var(--primary-light);">
+                <div class="card-title">💡 Preparation Reminder</div>
+                <div style="font-size:15px; font-weight:500;" id="prepReminder">Your period is approaching. Consider carrying sanitary products.</div>
+            </div>
+
+            <div class="notify-btn-container">
+                <button class="notify-btn" id="notifyMeBtn">🔔 Notify Me for Next Period</button>
+            </div>
+
+            <div style="margin-top:6px;">
+                <span class="notif-status" id="notifStatus">🔔 Notifications: Active</span>
+            </div>
+
+            <div class="disclaimer">
+                ⚕️ All dates are estimates. Cycles can change. FemCycle is not a contraceptive or medical device.
+            </div>
+        </div>
+
+        <!-- ===== CALENDAR ===== -->
+        <div id="calendar" class="screen">
+            <h2 style="font-size:20px; font-weight:600; margin-bottom:4px;">📆 Calendar</h2>
+            <div class="calendar-header">
+                <button id="prevMonth">‹</button>
+                <span id="monthLabel" style="font-weight:600; font-size:17px;">August 2026</span>
+                <button id="nextMonth">›</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+            <div class="calendar-legend">
+                <span><span class="legend-dot" style="background:var(--safe-color);"></span> ✅ Safe</span>
+                <span><span class="legend-dot" style="background:var(--unsafe-color);"></span> 🩸 Unsafe (Period)</span>
+                <span><span class="legend-dot" style="background:var(--fertile-color);"></span> 🌱 Fertile (UNSAFE)</span>
+                <span><span class="legend-dot" style="background:var(--ovulation-color);"></span> 🔮 Ovulation (Deep Red)</span>
+                <span><span class="legend-dot" style="background:var(--primary);"></span> 📍 Today</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-light); text-align:center; margin:4px 0;">
+                📅 Fertile Window: 3 days before ovulation + ovulation + 3 days after ovulation
+            </div>
+            <button class="btn-primary btn-small" id="logPeriodBtn" style="margin:8px 0;">📝 Log Period Start</button>
+            <div id="calendarInfo" class="card" style="margin-top:4px; font-size:14px;">Tap a date for details</div>
+        </div>
+
+        <!-- ===== FERTILITY ===== -->
+        <div id="fertility" class="screen">
+            <h2 style="font-size:20px; font-weight:600;">🌱 Fertility</h2>
+            <div class="card">
+                <div class="card-title">🔮 Ovulation</div>
+                <div class="card-value" id="fertOvulation">Day 14</div>
+                <div class="card-sub">Fixed — always on Day 14</div>
+            </div>
+            <div class="card">
+                <div class="card-title">🌱 Fertile Window</div>
+                <div class="card-value" id="fertWindow">Days 11–17</div>
+                <div class="card-sub">3 days before ovulation + ovulation + 3 days after ovulation</div>
+            </div>
+            <div class="card">
+                <div class="card-title">🔄 Current Cycle Day</div>
+                <div class="card-value" id="fertCycleDay">—</div>
+            </div>
+            <div class="fertility-message" id="tryingMessage">
+                Your fertile window is Days 11–17. This is when you can get pregnant.
+            </div>
+            <div class="info-card period-info">
+                🩸 <strong>Period: Days 1–${state.periodDuration || 5}</strong> (UNSAFE)
+                <div class="sub">Bleeding days — avoid unprotected sex if preventing pregnancy.</div>
+            </div>
+            <div class="info-card ovulation-info">
+                🔮 <strong>Ovulation: Day 14</strong> (Peak Fertility — Deep Red)
+                <div class="sub">Fixed — always on Day 14 of your cycle. You'll get a notification on this date.</div>
+            </div>
+            <div class="info-card fertile-info">
+                🌱 <strong>Fertile Window</strong> (UNSAFE)
+                <div class="sub">3 days before ovulation + ovulation + 3 days after ovulation</div>
+            </div>
+            <div class="info-card safe-info">
+                ✅ <strong>Safe Days: Days ${state.periodDuration + 1 || 6}–10 & 18–27</strong> (Low risk)
+                <div class="sub">Low risk of pregnancy, but no method is 100% guaranteed.</div>
+            </div>
+            <div class="disclaimer">
+                ⚕️ Fertility predictions are estimates. Ovulation can occur earlier or later than predicted, especially when cycles are irregular. Do not rely on FemCycle alone to prevent pregnancy.
+            </div>
+            <div style="font-size:13px; color:var(--text-light); margin-top:6px;">
+                <span id="tryingStatus">🤍 Not currently trying to conceive</span>
+            </div>
+        </div>
+
+        <!-- ===== HISTORY ===== -->
+        <div id="history" class="screen">
+            <h2 style="font-size:20px; font-weight:600;">📊 Cycle History</h2>
+            <div class="card">
+                <div class="card-title">📈 Average Cycle Length</div>
+                <div class="card-value" id="avgCycleLength">28 days</div>
+                <div class="card-sub">Fixed cycle</div>
+            </div>
+            <div class="card">
+                <div class="card-title">📉 Cycle Variations</div>
+                <div class="card-value" id="cycleVariations">Fixed — no variations</div>
+                <div class="card-sub">28-day fixed cycle</div>
+            </div>
+            <div id="historyList">
+                <div class="card" style="padding:12px;">
+                    <div style="font-weight:500;">No past cycles recorded yet.</div>
+                    <div style="font-size:13px; color:var(--text-light);">Log your period to build history.</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">😌 Recorded Symptoms</div>
+                <div id="symptomDisplay">No symptoms recorded.</div>
+                <div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;" id="symptomChips">
+                    <button class="btn-outline btn-small" data-sym="Cramps">Cramps</button>
+                    <button class="btn-outline btn-small" data-sym="Headache">Headache</button>
+                    <button class="btn-outline btn-small" data-sym="Back pain">Back pain</button>
+                    <button class="btn-outline btn-small" data-sym="Bloating">Bloating</button>
+                    <button class="btn-outline btn-small" data-sym="Breast tenderness">Breast tenderness</button>
+                    <button class="btn-outline btn-small" data-sym="Fatigue">Fatigue</button>
+                    <button class="btn-outline btn-small" data-sym="Mood changes">Mood changes</button>
+                    <button class="btn-outline btn-small" data-sym="Acne">Acne</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SETTINGS ===== -->
+        <div id="settings" class="screen">
+            <h2 style="font-size:20px; font-weight:600;">⚙️ Settings</h2>
+            <div class="card">
+                <div class="settings-row">
+                    <span>🔒 App PIN Lock</span>
+                    <button class="toggle" id="pinToggle"></button>
+                </div>
+                <div class="settings-row">
+                    <span>👁️ Biometric Lock</span>
+                    <button class="toggle" id="bioToggle"></button>
+                </div>
+                <div class="settings-row">
+                    <span>🌙 Dark Mode</span>
+                    <button class="toggle active" id="darkToggle"></button>
+                </div>
+                <div class="settings-row">
+                    <span>🔔 Notifications</span>
+                    <button class="toggle active" id="notifToggle"></button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">🔔 Notification Settings</div>
+                <div style="margin:8px 0;">
+                    <div style="font-weight:500; font-size:14px;">Period Reminders</div>
+                    <select id="notifTiming" style="width:100%; padding:10px; border-radius:14px; border:1.5px solid var(--primary-light); background:var(--surface); color:var(--text); font-size:14px; margin-top:4px;">
+                        <option value="1">1 day before</option>
+                        <option value="2">2 days before</option>
+                        <option value="3" selected>3 days before</option>
+                        <option value="5">5 days before</option>
+                        <option value="7">7 days before</option>
+                    </select>
+                    <div style="font-size:12px; color:var(--text-light); margin-top:4px;">
+                        When within 7 days, you'll get 3 notifications daily (morning, afternoon, evening)
+                    </div>
+                </div>
+                <div style="margin:8px 0; border-top:1px solid var(--primary-light); padding-top:8px;">
+                    <div style="font-weight:500; font-size:14px;">Fertile Window & Ovulation Reminders</div>
+                    <div style="font-size:12px; color:var(--text-light); margin-top:4px;">
+                        You'll receive 3 daily notifications when your fertile window and ovulation are approaching. Plus a special notification on the exact ovulation date.
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <button class="btn-outline" id="editCycleBtn" style="margin-bottom:8px;">✏️ Edit Cycle Details</button>
+                <button class="btn-outline" id="deleteDataBtn" style="color:#c0392b; border-color:#c0392b;">🗑️ Delete All Data</button>
+            </div>
+            <div class="disclaimer">
+                🔐 Your data is stored privately on this device. No personal info is shared.
+            </div>
+        </div>
+
+        <!-- ===== BOTTOM NAV ===== -->
+        <div id="bottom-nav">
+            <button class="nav-item active" data-tab="home"><span>🏠</span>Home</button>
+            <button class="nav-item" data-tab="calendar"><span>📆</span>Calendar</button>
+            <button class="nav-item" data-tab="fertility"><span>🌱</span>Fertility</button>
+            <button class="nav-item" data-tab="history"><span>📊</span>History</button>
+            <button class="nav-item" data-tab="settings"><span>⚙️</span>Settings</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  FemCycle-Period and Ovulation Tracker
+        // ============================================================
+
+        (function() {
+            'use strict';
+
+            // --- State ---
+            const state = {
+                lastPeriod: '2026-08-21',
+                cycleLength: 28,
+                periodDuration: 5,
+                tryingToConceive: false, // false = Prevent, true = Conceive
+                history: [],
+                symptoms: {},
+                loggedPeriods: [],
+                notificationsEnabled: true,
+                notifTiming: 3,
+                darkMode: true,
+                pinEnabled: false,
+                bioEnabled: false,
+                currentMonth: new Date().getMonth(),
+                currentYear: new Date().getFullYear(),
+                countdownInterval: null,
+                notifInterval: null,
+                lastPeriodNotifDay: null,
+                lastFertileNotifDay: null,
+                lastOvulationNotifDay: null,
+                periodNotifSentToday: { morning: false, afternoon: false, evening: false },
+                fertileNotifSentToday: { morning: false, afternoon: false, evening: false },
+                ovulationNotifSentToday: false
+            };
+
+            // --- DOM refs ---
+            const screens = {
+                onboarding: document.getElementById('onboarding'),
+                home: document.getElementById('home'),
+                calendar: document.getElementById('calendar'),
+                fertility: document.getElementById('fertility'),
+                history: document.getElementById('history'),
+                settings: document.getElementById('settings'),
+            };
+            const navItems = document.querySelectorAll('.nav-item');
+            const $ = (id) => document.getElementById(id);
+
+            // --- Helpers ---
+            function parseDate(str) {
+                const parts = str.split('-');
+                return new Date(+parts[0], +parts[1]-1, +parts[2]);
+            }
+
+            function formatDate(d) {
+                const y = d.getFullYear();
+                const m = String(d.getMonth()+1).padStart(2,'0');
+                const day = String(d.getDate()).padStart(2,'0');
+                return `${y}-${m}-${day}`;
+            }
+
+            function addDays(date, days) {
+                const r = new Date(date);
+                r.setDate(r.getDate() + days);
+                return r;
+            }
+
+            function daysBetween(d1, d2) {
+                const t1 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
+                const t2 = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate());
+                return Math.floor((t2 - t1) / (1000*60*60*24));
+            }
+
+            function todayStr() {
+                return formatDate(new Date());
+            }
+
+            function getNow() {
+                return new Date();
+            }
+
+            // --- Core calculations (FIXED 28-day cycle) ---
+
+            // Next period starts ALWAYS on Day 28 (27 days after period start)
+            function getNextPeriodStart() {
+                const last = parseDate(state.lastPeriod);
+                return addDays(last, 27); // Day 28 = 27 days after start (0-indexed)
+            }
+
+            // Ovulation is ALWAYS on Day 14 (13 days after period start)
+            function getOvulationDate() {
+                const last = parseDate(state.lastPeriod);
+                return addDays(last, 13); // Day 14 = 13 days after start (0-indexed)
+            }
+
+            // Fertile window is ALWAYS Days 11-17
+            function getFertileWindow() {
+                const last = parseDate(state.lastPeriod);
+                const start = addDays(last, 10); // Day 11 = 10 days after start (0-indexed)
+                const end = addDays(last, 16);   // Day 17 = 16 days after start (0-indexed)
+                return { start, end };
+            }
+
+            function getCycleDay(today) {
+                const last = parseDate(state.lastPeriod);
+                const diff = daysBetween(last, today);
+                if (diff < 0) return null;
+                return (diff % 28) + 1; // Fixed 28-day cycle
+            }
+
+            // --- PERIOD DURATION CHECKS (STRICT BOUNDARIES) ---
+
+            function isCurrentPeriodDay(dateStr) {
+                const date = parseDate(dateStr);
+                const last = parseDate(state.lastPeriod);
+                const diff = daysBetween(last, date);
+                // Period is Days 1 to periodDuration of the cycle
+                return diff >= 0 && diff < state.periodDuration;
+            }
+
+            function isNextPeriodDay(dateStr) {
+                const next = getNextPeriodStart();
+                const date = parseDate(dateStr);
+                const diff = daysBetween(next, date);
+                // Days 0 to periodDuration-1 of the NEXT cycle
+                return diff >= 0 && diff < state.periodDuration;
+            }
+
+            function isInFertileWindow(dateStr) {
+                const date = parseDate(dateStr);
+                const last = parseDate(state.lastPeriod);
+                const diff = daysBetween(last, date);
+                if (diff < 0) return false;
+                const cycleDay = (diff % 28) + 1;
+                return cycleDay >= 11 && cycleDay <= 17;
+            }
+
+            function isOvulationDay(dateStr) {
+                const ov = getOvulationDate();
+                return formatDate(ov) === dateStr;
+            }
+
+            function isUnsafe(dateStr) {
+                // Period days (Strictly within the selected duration)
+                if (isCurrentPeriodDay(dateStr)) return true;
+                // Next period days (Strictly within the selected duration)
+                if (isNextPeriodDay(dateStr)) return true;
+                // Fertile window (Days 11-17)
+                if (isInFertileWindow(dateStr)) return true;
+                return false;
+            }
+
+            function isSafe(dateStr) {
+                return !isUnsafe(dateStr);
+            }
+
+            // --- Mode Management ---
+            function updateModeUI() {
+                const modePrevent = document.getElementById('modePrevent');
+                const modeConceive = document.getElementById('modeConceive');
+                
+                if (state.tryingToConceive) {
+                    modePrevent.classList.remove('active');
+                    modeConceive.classList.add('active');
+                    document.getElementById('greeting').textContent = '💕 Trying to conceive';
+                } else {
+                    modePrevent.classList.add('active');
+                    modeConceive.classList.remove('active');
+                    document.getElementById('greeting').textContent = '🚫 Preventing pregnancy';
+                }
+                
+                // Update fertility message based on mode
+                const msg = document.getElementById('tryingMessage');
+                const status = document.getElementById('tryingStatus');
+                const fw = getFertileWindow();
+                const today = new Date();
+                const diff = daysBetween(today, fw.start);
+                
+                if (state.tryingToConceive) {
+                    if (diff <= 7 && diff >= -1) {
+                        msg.textContent = '🌱 Your FERTILE window is approaching or active! 💕 This is your best time to conceive.';
+                    } else {
+                        msg.textContent = '🌱 Tracking your FERTILE window. Consult your healthcare provider for personalized advice.';
+                    }
+                    status.textContent = '💕 Trying to conceive — focus on fertile window.';
+                } else {
+                    if (diff <= 7 && diff >= -1) {
+                        msg.textContent = '⚠️ Your FERTILE window is approaching or active! Use protection if you are not trying to conceive.';
+                    } else {
+                        msg.textContent = '📊 Your FERTILE window is shown for awareness. This is when you can get pregnant.';
+                    }
+                    status.textContent = '🚫 Preventing pregnancy — avoid unprotected sex during fertile window.';
+                }
+
+                // Update period duration display in info cards
+                const periodInfoCards = document.querySelectorAll('.info-card.period-info .sub');
+                const safeInfoCards = document.querySelectorAll('.info-card.safe-info .sub');
+                periodInfoCards.forEach(el => {
+                    el.textContent = `Bleeding days — avoid unprotected sex if preventing pregnancy. (Days 1–${state.periodDuration})`;
+                });
+                safeInfoCards.forEach(el => {
+                    el.textContent = `Low risk of pregnancy, but no method is 100% guaranteed. (Days ${state.periodDuration + 1}–10 & 18–27)`;
+                });
+            }
+
+            // --- PERFECT COUNTDOWN LOGIC (EXACT DAYS LEFT) ---
+
+            function updatePeriodCountdown() {
+                const next = getNextPeriodStart();
+                const now = getNow();
+                const diffMs = next.getTime() - now.getTime();
+
+                if (diffMs <= 0) {
+                    document.getElementById('pDays').textContent = '00';
+                    document.getElementById('pHours').textContent = '00';
+                    document.getElementById('pMinutes').textContent = '00';
+                    document.getElementById('pSeconds').textContent = '00';
+                    document.getElementById('pStatus').textContent = '🩸 Your period is due! Please log it.';
+                    return;
+                }
+
+                // Calculate total days, hours, minutes, seconds
+                const totalSeconds = Math.floor(diffMs / 1000);
+                const days = Math.floor(totalSeconds / 86400);
+                const hours = Math.floor((totalSeconds % 86400) / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+
+                document.getElementById('pDays').textContent = String(days).padStart(2, '0');
+                document.getElementById('pHours').textContent = String(hours).padStart(2, '0');
+                document.getElementById('pMinutes').textContent = String(minutes).padStart(2, '0');
+                document.getElementById('pSeconds').textContent = String(seconds).padStart(2, '0');
+
+                // Calculate the cycle day we are currently on
+                const cycleDay = getCycleDay(now);
+                let statusText = '';
+
+                if (cycleDay !== null) {
+                    // PERFECT COUNTDOWN: The number of days displayed is exactly the days left.
+                    // If today is Day 1, you have 27 days until Day 28.
+                    // If today is Day 27, you have 1 day until Day 28.
+                    // If today is Day 28, you have 0 days (period is TODAY).
+                    
+                    if (days === 0 && hours === 0 && minutes === 0 && seconds === 0) {
+                        statusText = '⏰ Period (Day 28) is TODAY!';
+                    } else if (days <= state.notifTiming && days > 0) {
+                        statusText = `⚠️ Period (Day 28) in ${days} day${days > 1 ? 's' : ''}! Prepare.`;
+                    } else {
+                        statusText = `📅 ${days} days until period (Day 28). Currently on Day ${cycleDay}.`;
+                    }
+                } else {
+                    statusText = `📅 ${days} days until period (Day 28).`;
+                }
+
+                document.getElementById('pStatus').textContent = statusText;
+            }
+
+            function updateFertileCountdown() {
+                const fw = getFertileWindow();
+                const now = getNow();
+                const diffMs = fw.start.getTime() - now.getTime();
+
+                if (diffMs <= 0) {
+                    const endDiff = fw.end.getTime() - now.getTime();
+                    if (endDiff >= 0) {
+                        document.getElementById('fDays').textContent = '🌱';
+                        document.getElementById('fHours').textContent = 'ACTIVE';
+                        document.getElementById('fMinutes').textContent = 'NOW';
+                        document.getElementById('fSeconds').textContent = '✨';
+                        document.getElementById('fStatus').textContent = '🌱 You are in your FERTILE window!';
+                    } else {
+                        document.getElementById('fDays').textContent = '--';
+                        document.getElementById('fHours').textContent = '--';
+                        document.getElementById('fMinutes').textContent = '--';
+                        document.getElementById('fSeconds').textContent = '--';
+                        document.getElementById('fStatus').textContent = '🌱 Fertile window has passed.';
+                    }
+                    return;
+                }
+
+                const totalSeconds = Math.floor(diffMs / 1000);
+                const days = Math.floor(totalSeconds / 86400);
+                const hours = Math.floor((totalSeconds % 86400) / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+
+                document.getElementById('fDays').textContent = String(days).padStart(2, '0');
+                document.getElementById('fHours').textContent = String(hours).padStart(2, '0');
+                document.getElementById('fMinutes').textContent = String(minutes).padStart(2, '0');
+                document.getElementById('fSeconds').textContent = String(seconds).padStart(2, '0');
+
+                if (days <= 5 && days > 0) {
+                    document.getElementById('fStatus').textContent = `🌱 FERTILE window (Day 11) in ${days} day${days > 1 ? 's' : ''}!`;
+                } else {
+                    document.getElementById('fStatus').textContent = `🌱 ${days} days until FERTILE window (Day 11).`;
+                }
+            }
+
+            function updateOvulationCountdown() {
+                const ov = getOvulationDate();
+                const now = getNow();
+                const diffMs = ov.getTime() - now.getTime();
+
+                if (diffMs <= 0) {
+                    document.getElementById('oDays').textContent = '🔮';
+                    document.getElementById('oHours').textContent = 'TODAY';
+                    document.getElementById('oMinutes').textContent = 'OR';
+                    document.getElementById('oSeconds').textContent = 'PASSED';
+                    document.getElementById('oStatus').textContent = '🔮 Ovulation (Day 14) is today or has passed.';
+                    return;
+                }
+
+                const totalSeconds = Math.floor(diffMs / 1000);
+                const days = Math.floor(totalSeconds / 86400);
+                const hours = Math.floor((totalSeconds % 86400) / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+
+                document.getElementById('oDays').textContent = String(days).padStart(2, '0');
+                document.getElementById('oHours').textContent = String(hours).padStart(2, '0');
+                document.getElementById('oMinutes').textContent = String(minutes).padStart(2, '0');
+                document.getElementById('oSeconds').textContent = String(seconds).padStart(2, '0');
+
+                if (days <= 3 && days > 0) {
+                    document.getElementById('oStatus').textContent = `🔮 Ovulation (Day 14) in ${days} day${days > 1 ? 's' : ''}! Peak fertility!`;
+                } else {
+                    document.getElementById('oStatus').textContent = `🔮 ${days} days until ovulation (Day 14).`;
+                }
+            }
+
+            function startCountdowns() {
+                if (state.countdownInterval) {
+                    clearInterval(state.countdownInterval);
+                }
+                updatePeriodCountdown();
+                updateFertileCountdown();
+                updateOvulationCountdown();
+                state.countdownInterval = setInterval(() => {
+                    updatePeriodCountdown();
+                    updateFertileCountdown();
+                    updateOvulationCountdown();
+                }, 1000);
+            }
+
+            function stopCountdowns() {
+                if (state.countdownInterval) {
+                    clearInterval(state.countdownInterval);
+                    state.countdownInterval = null;
+                }
+            }
+
+            // --- Dual Notification System with Ovulation Alert ---
+
+            function getDaysUntilNextPeriod() {
+                const next = getNextPeriodStart();
+                const now = getNow();
+                const diffMs = next.getTime() - now.getTime();
+                if (diffMs <= 0) return -1;
+                return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            }
+
+            function getDaysUntilFertileWindow() {
+                const fw = getFertileWindow();
+                const now = getNow();
+                const diffMs = fw.start.getTime() - now.getTime();
+                if (diffMs <= 0) return -1;
+                return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            }
+
+            function getDaysUntilOvulation() {
+                const ov = getOvulationDate();
+                const now = getNow();
+                const diffMs = ov.getTime() - now.getTime();
+                if (diffMs <= 0) return -1;
+                return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            }
+
+            function getTimeOfDay() {
+                const hour = getNow().getHours();
+                if (hour >= 5 && hour < 12) return 'morning';
+                if (hour >= 12 && hour < 17) return 'afternoon';
+                if (hour >= 17 && hour < 22) return 'evening';
+                return 'night';
+            }
+
+            function sendNotification(message, type = 'period') {
+                if (!state.notificationsEnabled) return;
+                
+                const icon = type === 'period' ? '🩸' : type === 'fertile' ? '🌱' : '🔮';
+                const title = type === 'period' ? 'FemCycle Period Reminder' : 
+                              type === 'fertile' ? 'FemCycle Fertility Reminder' : 
+                              'FemCycle Ovulation Reminder';
+                
+                alert(`FemCycle predicts: ${message}`);
+                
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification(title, {
+                        body: message,
+                        icon: '🌸'
+                    });
+                }
+            }
+
+            function checkAndSendNotifications() {
+                if (!state.notificationsEnabled) return;
+
+                const today = todayStr();
+                const timeOfDay = getTimeOfDay();
+                
+                if (timeOfDay === 'night') return;
+
+                // ---- PERIOD NOTIFICATIONS ----
+                const daysUntilPeriod = getDaysUntilNextPeriod();
+                
+                if (daysUntilPeriod >= 0 && daysUntilPeriod <= 7) {
+                    if (state.lastPeriodNotifDay !== today) {
+                        state.periodNotifSentToday = { morning: false, afternoon: false, evening: false };
+                        state.lastPeriodNotifDay = today;
+                    }
+
+                    let periodMessage = '';
+                    if (daysUntilPeriod === 0) {
+                        periodMessage = '🩸 TODAY is your expected period start date (Day 28)! Prepare accordingly.';
+                    } else {
+                        periodMessage = `🩸 Your period (Day 28) is in ${daysUntilPeriod} day${daysUntilPeriod > 1 ? 's' : ''}. Prepare accordingly!`;
+                    }
+
+                    if (timeOfDay === 'morning' && !state.periodNotifSentToday.morning) {
+                        sendNotification(`🌅 Good morning! ${periodMessage}`, 'period');
+                        state.periodNotifSentToday.morning = true;
+                    } else if (timeOfDay === 'afternoon' && !state.periodNotifSentToday.afternoon) {
+                        sendNotification(`☀️ Afternoon reminder: ${periodMessage}`, 'period');
+                        state.periodNotifSentToday.afternoon = true;
+                    } else if (timeOfDay === 'evening' && !state.periodNotifSentToday.evening) {
+                        sendNotification(`🌙 Evening reminder: ${periodMessage}`, 'period');
+                        state.periodNotifSentToday.evening = true;
+                    }
+                } else {
+                    state.lastPeriodNotifDay = null;
+                    state.periodNotifSentToday = { morning: false, afternoon: false, evening: false };
+                }
+
+                // ---- FERTILITY & OVULATION NOTIFICATIONS ----
+                const daysUntilFertile = getDaysUntilFertileWindow();
+                const daysUntilOvulation = getDaysUntilOvulation();
+                
+                const isInFertileWindow = daysUntilFertile <= 0 && daysUntilFertile > -7;
+                const isApproachingFertile = daysUntilFertile > 0 && daysUntilFertile <= 5;
+                
+                if (isApproachingFertile || isInFertileWindow || daysUntilOvulation <= 5) {
+                    if (state.lastFertileNotifDay !== today) {
+                        state.fertileNotifSentToday = { morning: false, afternoon: false, evening: false };
+                        state.lastFertileNotifDay = today;
+                    }
+
+                    let fertileMessage = '';
+                    let notifType = 'fertile';
+                    
+                    if (daysUntilOvulation === 0) {
+                        fertileMessage = '🔮 TODAY is your ovulation day (Day 14)! This is your peak fertile time.';
+                        notifType = 'ovulation';
+                    } else if (daysUntilOvulation > 0 && daysUntilOvulation <= 3) {
+                        fertileMessage = `🌱 Your ovulation (Day 14) is in ${daysUntilOvulation} day${daysUntilOvulation > 1 ? 's' : ''}! Your fertile window is active.`;
+                        notifType = 'fertile';
+                    } else if (isInFertileWindow) {
+                        if (state.tryingToConceive) {
+                            fertileMessage = '🌱 You are in your FERTILE window! 💕 This is your best time to conceive.';
+                        } else {
+                            fertileMessage = '🌱 You are in your FERTILE window! Use protection if you are not trying to conceive.';
+                        }
+                        notifType = 'fertile';
+                    } else if (isApproachingFertile) {
+                        fertileMessage = `🌱 Your FERTILE window (Day 11) begins in ${daysUntilFertile} day${daysUntilFertile > 1 ? 's' : ''}. Prepare for ovulation on Day 14.`;
+                        notifType = 'fertile';
+                    } else {
+                        fertileMessage = `🌱 Your ovulation (Day 14) is in ${daysUntilOvulation} day${daysUntilOvulation > 1 ? 's' : ''}. Track your cycle.`;
+                        notifType = 'fertile';
+                    }
+
+                    if (timeOfDay === 'morning' && !state.fertileNotifSentToday.morning) {
+                        sendNotification(`🌅 Good morning! ${fertileMessage}`, notifType);
+                        state.fertileNotifSentToday.morning = true;
+                    } else if (timeOfDay === 'afternoon' && !state.fertileNotifSentToday.afternoon) {
+                        sendNotification(`☀️ Afternoon reminder: ${fertileMessage}`, notifType);
+                        state.fertileNotifSentToday.afternoon = true;
+                    } else if (timeOfDay === 'evening' && !state.fertileNotifSentToday.evening) {
+                        sendNotification(`🌙 Evening reminder: ${fertileMessage}`, notifType);
+                        state.fertileNotifSentToday.evening = true;
+                    }
+                } else {
+                    state.lastFertileNotifDay = null;
+                    state.fertileNotifSentToday = { morning: false, afternoon: false, evening: false };
+                }
+
+                // ---- SPECIAL OVULATION DAY NOTIFICATION (SENT ON THE EXACT DATE) ----
+                const ovulationDate = getOvulationDate();
+                
+                if (formatDate(ovulationDate) === todayStr()) {
+                    if (!state.ovulationNotifSentToday) {
+                        if (state.tryingToConceive) {
+                            sendNotification('🔮 TODAY IS YOUR OVULATION DAY (Day 14)! 💕 This is your BEST time to conceive!', 'ovulation');
+                        } else {
+                            sendNotification('🔮 TODAY IS YOUR OVULATION DAY (Day 14)! ⚠️ Use protection if you are not trying to conceive!', 'ovulation');
+                        }
+                        state.ovulationNotifSentToday = true;
+                    }
+                } else {
+                    state.ovulationNotifSentToday = false;
+                }
+
+                // Update notification status indicator
+                const statusEl = document.getElementById('notifStatus');
+                if (statusEl) {
+                    const periodSent = Object.values(state.periodNotifSentToday).filter(v => v).length;
+                    const fertileSent = Object.values(state.fertileNotifSentToday).filter(v => v).length;
+                    const totalSent = periodSent + fertileSent + (state.ovulationNotifSentToday ? 1 : 0);
+                    
+                    if (totalSent > 0) {
+                        statusEl.textContent = `🔔 Today: ${totalSent} notification${totalSent > 1 ? 's' : ''} sent`;
+                        statusEl.className = 'notif-status active';
+                    } else {
+                        const daysUntilPeriod = getDaysUntilNextPeriod();
+                        const daysUntilFertile = getDaysUntilFertileWindow();
+                        
+                        if (daysUntilPeriod <= 7 || daysUntilFertile <= 5 || formatDate(getOvulationDate()) === todayStr()) {
+                            statusEl.textContent = '🔔 Notifications: Awaiting next time slot';
+                            statusEl.className = 'notif-status active';
+                        } else {
+                            statusEl.textContent = '🔔 Notifications: Waiting for 7-day window';
+                            statusEl.className = 'notif-status inactive';
+                        }
+                    }
+                }
+            }
+
+            function startNotificationChecker() {
+                if (state.notifInterval) {
+                    clearInterval(state.notifInterval);
+                }
+                state.notifInterval = setInterval(checkAndSendNotifications, 5 * 60 * 1000);
+                setTimeout(checkAndSendNotifications, 2000);
+            }
+
+            function stopNotificationChecker() {
+                if (state.notifInterval) {
+                    clearInterval(state.notifInterval);
+                    state.notifInterval = null;
+                }
+            }
+
+            // --- Render functions ---
+            function renderHome() {
+                const next = getNextPeriodStart();
+                const today = new Date();
+                const cycleDay = getCycleDay(today);
+                const ov = getOvulationDate();
+                const fw = getFertileWindow();
+
+                $('nextPeriodDisplay').textContent = formatDate(next);
+                $('nextPeriodSub').textContent = `Starts on Day 28 (${formatDate(next)})`;
+
+                $('cycleDayDisplay').textContent = cycleDay !== null ? cycleDay : '—';
+                $('ovulationDisplay').textContent = formatDate(ov);
+                $('fertileWindowDisplay').textContent = `${formatDate(fw.start)} – ${formatDate(fw.end)}`;
+
+                const daysUntil = daysBetween(today, next);
+                let reminder = 'Your period is not near.';
+                if (daysUntil >= 0 && daysUntil <= 5) {
+                    reminder = '🌸 Your period is approaching. Consider carrying sanitary products.';
+                } else if (daysUntil < 0) {
+                    reminder = '🩸 Your period may have started. Log it in the calendar.';
+                } else {
+                    reminder = `📅 ${daysUntil} days until your next period (Day 28).`;
+                }
+                $('prepReminder').textContent = reminder;
+
+                updateModeUI();
+                startCountdowns();
+                startNotificationChecker();
+            }
+
+            function renderCalendar() {
+                const year = state.currentYear;
+                const month = state.currentMonth;
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month+1, 0);
+                const today = todayStr();
+
+                $('monthLabel').textContent = firstDay.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+                const grid = document.getElementById('calendarGrid');
+                grid.innerHTML = '';
+
+                const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+                for (const dn of dayNames) {
+                    const div = document.createElement('div');
+                    div.className = 'day-name';
+                    div.textContent = dn;
+                    grid.appendChild(div);
+                }
+
+                for (let i = 0; i < firstDay.getDay(); i++) {
+                    const div = document.createElement('div');
+                    div.className = 'day';
+                    grid.appendChild(div);
+                }
+
+                const nextPeriod = getNextPeriodStart();
+                const ov = getOvulationDate();
+                const fw = getFertileWindow();
+
+                for (let d = 1; d <= lastDay.getDate(); d++) {
+                    const dateObj = new Date(year, month, d);
+                    const dateStr = formatDate(dateObj);
+                    const div = document.createElement('div');
+                    div.className = 'day tapable';
+                    div.textContent = d;
+                    div.dataset.date = dateStr;
+
+                    if (dateStr === today) {
+                        div.classList.add('today');
+                    }
+                    
+                    if (isUnsafe(dateStr)) {
+                        // Check if it's ovulation
+                        if (isOvulationDay(dateStr)) {
+                            div.classList.add('ovulation-day');
+                        }
+                        // Check if it's fertile (but not ovulation)
+                        else if (isInFertileWindow(dateStr)) {
+                            div.classList.add('fertile-day');
+                        }
+                        // Otherwise it's period (current or next)
+                        else {
+                            div.classList.add('unsafe-period');
+                        }
+                    }
+                    else {
+                        div.classList.add('safe-day');
+                    }
+
+                    div.addEventListener('click', function() {
+                        const info = document.getElementById('calendarInfo');
+                        const d = this.dataset.date;
+                        const day = new Date(d);
+                        let status = '';
+                        let extraInfo = '';
+                        const cycleDay = getCycleDay(day);
+                        const next = getNextPeriodStart();
+                        const isNextPeriod = daysBetween(next, day) >= 0 && daysBetween(next, day) < state.periodDuration;
+                        
+                        if (this.classList.contains('unsafe-period')) {
+                            if (isNextPeriod) {
+                                status = `🩸 Unsafe (Next Period — Days 28–${27 + state.periodDuration})`;
+                            } else {
+                                status = `🩸 Unsafe (Period — Days 1–${state.periodDuration})`;
+                            }
+                        }
+                        else if (this.classList.contains('fertile-day')) {
+                            status = '🌱 FERTILE (UNSAFE)';
+                            extraInfo = ' ⚠️ You can get pregnant during this time.';
+                        }
+                        else if (this.classList.contains('ovulation-day')) {
+                            status = '🔮 OVULATION DAY (Day 14) — Peak Fertility (Deep Red)';
+                            extraInfo = ' ⚠️ Highest chance of pregnancy.';
+                        }
+                        else if (this.classList.contains('safe-day')) {
+                            status = `✅ Safe (Days ${state.periodDuration + 1}–10 & 18–27)`;
+                        }
+                        else if (this.classList.contains('today')) {
+                            status = '📍 Today';
+                        }
+                        info.innerHTML = `<strong>${d}</strong> — Cycle day ${cycleDay || '?'} ${status ? '— ' + status : ''} ${extraInfo}`;
+                    });
+
+                    grid.appendChild(div);
+                }
+            }
+
+            function renderFertility() {
+                const ov = getOvulationDate();
+                const fw = getFertileWindow();
+                const cd = getCycleDay(new Date());
+
+                $('fertOvulation').textContent = formatDate(ov);
+                $('fertWindow').textContent = `${formatDate(fw.start)} – ${formatDate(fw.end)}`;
+                $('fertCycleDay').textContent = cd !== null ? cd : '—';
+
+                updateModeUI();
+            }
+
+            function renderHistory() {
+                const avg = state.history.length > 0 ? state.history.reduce((a,b) => a + (b.cycleLength || state.cycleLength), 0) / state.history.length : 28;
+                $('avgCycleLength').textContent = '28 days';
+                $('cycleVariations').textContent = 'Fixed — no variations';
+
+                const list = document.getElementById('historyList');
+                if (state.history.length === 0) {
+                    list.innerHTML = `<div class="card" style="padding:12px;"><div style="font-weight:500;">No past cycles recorded yet.</div><div style="font-size:13px; color:var(--text-light);">Log your period to build history.</div></div>`;
+                } else {
+                    let html = '';
+                    for (const h of state.history) {
+                        const isLogged = state.loggedPeriods.includes(h.start);
+                        const status = isLogged ? '🩸 Unsafe' : '✅ Safe';
+                        html += `<div class="history-item"><span>${h.start} <span style="font-size:11px; color:var(--text-light);">${status}</span></span><span>${h.duration || state.periodDuration} days</span><span>28 days (fixed)</span></div>`;
+                    }
+                    list.innerHTML = `<div class="card">${html}</div>`;
+                }
+
+                const symDiv = document.getElementById('symptomDisplay');
+                const allSyms = new Set();
+                for (const date in state.symptoms) {
+                    for (const s of state.symptoms[date]) {
+                        allSyms.add(s);
+                    }
+                }
+                if (allSyms.size === 0) {
+                    symDiv.textContent = 'No symptoms recorded.';
+                } else {
+                    symDiv.innerHTML = Array.from(allSyms).map(s => `<span class="symptom-tag">${s}</span>`).join(' ');
+                }
+            }
+
+            function renderSettings() {
+                $('pinToggle').classList.toggle('active', state.pinEnabled);
+                $('bioToggle').classList.toggle('active', state.bioEnabled);
+                $('darkToggle').classList.toggle('active', state.darkMode);
+                $('notifToggle').classList.toggle('active', state.notificationsEnabled);
+                $('notifTiming').value = state.notifTiming;
+                document.body.classList.toggle('dark', state.darkMode);
+            }
+
+            function renderAll() {
+                renderHome();
+                renderCalendar();
+                renderFertility();
+                renderHistory();
+                renderSettings();
+            }
+
+            // --- Navigation ---
+            function switchTab(tabId) {
+                for (const key in screens) {
+                    screens[key].classList.toggle('active', key === tabId);
+                }
+                navItems.forEach(item => {
+                    item.classList.toggle('active', item.dataset.tab === tabId);
+                });
+                renderAll();
+            }
+
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    switchTab(this.dataset.tab);
+                });
+            });
+
+            // --- Mode Buttons ---
+            document.getElementById('modePrevent').addEventListener('click', function() {
+                state.tryingToConceive = false;
+                updateModeUI();
+                saveState();
+                renderAll();
+            });
+
+            document.getElementById('modeConceive').addEventListener('click', function() {
+                state.tryingToConceive = true;
+                updateModeUI();
+                saveState();
+                renderAll();
+            });
+
+            // --- Onboarding ---
+            $('startBtn').addEventListener('click', function() {
+                const last = $('lastPeriod').value;
+                const dur = parseInt($('periodDuration').value);
+                const trying = $('tryingToConceive').value === 'yes';
+
+                if (!last) {
+                    alert('Please select the first day of your last period.');
+                    return;
+                }
+
+                state.lastPeriod = last;
+                state.periodDuration = dur;
+                state.tryingToConceive = trying;
+                state.loggedPeriods = [];
+                state.history = [{ start: last, duration: dur, cycleLength: 28 }];
+
+                saveState();
+                switchTab('home');
+            });
+
+            // --- Calendar controls ---
+            $('prevMonth').addEventListener('click', function() {
+                state.currentMonth--;
+                if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
+                renderCalendar();
+            });
+            $('nextMonth').addEventListener('click', function() {
+                state.currentMonth++;
+                if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
+                renderCalendar();
+            });
+
+            // --- Log Period ---
+            $('logPeriodBtn').addEventListener('click', function() {
+                const today = todayStr();
+                if (state.loggedPeriods.includes(today)) {
+                    alert('Period already logged for today.');
+                    return;
+                }
+                state.loggedPeriods.push(today);
+                state.history.push({ start: today, duration: state.periodDuration, cycleLength: 28 });
+                state.lastPeriod = today;
+                saveState();
+                renderAll();
+                alert(`✅ Period logged as UNSAFE for ${today}`);
+            });
+
+            // --- Notify Me Button ---
+            $('notifyMeBtn').addEventListener('click', function() {
+                const next = getNextPeriodStart();
+                const today = new Date();
+                const daysUntil = daysBetween(today, next);
+                
+                let message = '';
+                if (daysUntil < 0) {
+                    message = `⚠️ Your period was expected on ${formatDate(next)}. Please log it if it has started.`;
+                } else if (daysUntil === 0) {
+                    message = `🔔 TODAY is your expected period start date (Day 28)!`;
+                } else if (daysUntil <= state.notifTiming) {
+                    message = `🔔 Your period (Day 28) is expected in ${daysUntil} day${daysUntil > 1 ? 's' : ''} (${formatDate(next)}). Prepare accordingly!`;
+                } else {
+                    message = `📅 Your next period (Day 28) is expected in ${daysUntil} days on ${formatDate(next)}. I'll remind you closer to the date.`;
+                }
+                
+                alert(`FemCycle predicts: ${message}`);
+                
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('FemCycle Period Reminder', {
+                        body: message,
+                        icon: '🌸'
+                    });
+                } else if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+            });
+
+            // --- Symptom chips ---
+            document.querySelectorAll('#symptomChips .btn-outline').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const sym = this.dataset.sym;
+                    const today = todayStr();
+                    if (!state.symptoms[today]) state.symptoms[today] = [];
+                    if (state.symptoms[today].includes(sym)) {
+                        state.symptoms[today] = state.symptoms[today].filter(s => s !== sym);
+                        this.style.background = 'transparent';
+                    } else {
+                        state.symptoms[today].push(sym);
+                        this.style.background = 'var(--primary-light)';
+                    }
+                    saveState();
+                    renderHistory();
+                });
+            });
+
+            // --- Settings toggles ---
+            $('darkToggle').addEventListener('click', function() {
+                state.darkMode = !state.darkMode;
+                renderSettings();
+                saveState();
+            });
+            $('notifToggle').addEventListener('click', function() {
+                state.notificationsEnabled = !state.notificationsEnabled;
+                renderSettings();
+                saveState();
+                if (state.notificationsEnabled) {
+                    alert('🔔 Notifications enabled. You will receive 3 daily reminders for both period and fertility when within the warning window. Plus a special notification on ovulation day.');
+                    if ('Notification' in window && Notification.permission === 'default') {
+                        Notification.requestPermission();
+                    }
+                    startNotificationChecker();
+                } else {
+                    stopNotificationChecker();
+                }
+            });
+            $('pinToggle').addEventListener('click', function() {
+                state.pinEnabled = !state.pinEnabled;
+                renderSettings();
+                saveState();
+                if (state.pinEnabled) alert('🔒 PIN lock enabled (simulated).');
+            });
+            $('bioToggle').addEventListener('click', function() {
+                state.bioEnabled = !state.bioEnabled;
+                renderSettings();
+                saveState();
+                if (state.bioEnabled) alert('👁️ Biometric lock enabled (simulated).');
+            });
+            $('notifTiming').addEventListener('change', function() {
+                state.notifTiming = parseInt(this.value);
+                saveState();
+            });
+
+            // --- Edit cycle ---
+            $('editCycleBtn').addEventListener('click', function() {
+                const newLast = prompt('Enter last period date (YYYY-MM-DD):', state.lastPeriod);
+                if (newLast) state.lastPeriod = newLast;
+                const newDur = prompt('Enter period duration (days):', state.periodDuration);
+                if (newDur) state.periodDuration = parseInt(newDur);
+                saveState();
+                renderAll();
+            });
+
+            // --- Delete data ---
+            $('deleteDataBtn').addEventListener('click', function() {
+                if (confirm('Delete all cycle data? This cannot be undone.')) {
+                    state.history = [];
+                    state.loggedPeriods = [];
+                    state.symptoms = {};
+                    state.lastPeriod = '2026-08-21';
+                    state.periodDuration = 5;
+                    saveState();
+                    renderAll();
+                    alert('All data deleted.');
+                }
+            });
+
+            // --- LocalStorage ---
+            function saveState() {
+                const data = {
+                    lastPeriod: state.lastPeriod,
+                    cycleLength: 28,
+                    periodDuration: state.periodDuration,
+                    tryingToConceive: state.tryingToConceive,
+                    history: state.history,
+                    symptoms: state.symptoms,
+                    loggedPeriods: state.loggedPeriods,
+                    notificationsEnabled: state.notificationsEnabled,
+                    notifTiming: state.notifTiming,
+                    darkMode: state.darkMode,
+                    pinEnabled: state.pinEnabled,
+                    bioEnabled: state.bioEnabled,
+                    lastPeriodNotifDay: state.lastPeriodNotifDay,
+                    lastFertileNotifDay: state.lastFertileNotifDay,
+                    lastOvulationNotifDay: state.lastOvulationNotifDay,
+                    periodNotifSentToday: state.periodNotifSentToday,
+                    fertileNotifSentToday: state.fertileNotifSentToday,
+                    ovulationNotifSentToday: state.ovulationNotifSentToday
+                };
+                localStorage.setItem('femcycle_data', JSON.stringify(data));
+            }
+
+            function loadState() {
+                const raw = localStorage.getItem('femcycle_data');
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    Object.assign(state, data);
+                    if (data.history) state.history = data.history;
+                    if (data.symptoms) state.symptoms = data.symptoms;
+                    if (data.loggedPeriods) state.loggedPeriods = data.loggedPeriods;
+                    if (data.darkMode !== undefined) state.darkMode = data.darkMode;
+                    if (data.lastPeriodNotifDay) state.lastPeriodNotifDay = data.lastPeriodNotifDay;
+                    if (data.lastFertileNotifDay) state.lastFertileNotifDay = data.lastFertileNotifDay;
+                    if (data.lastOvulationNotifDay) state.lastOvulationNotifDay = data.lastOvulationNotifDay;
+                    if (data.periodNotifSentToday) state.periodNotifSentToday = data.periodNotifSentToday;
+                    if (data.fertileNotifSentToday) state.fertileNotifSentToday = data.fertileNotifSentToday;
+                    if (data.ovulationNotifSentToday) state.ovulationNotifSentToday = data.ovulationNotifSentToday;
+                }
+            }
+
+            // --- Init ---
+            loadState();
+
+            if (state.lastPeriod && state.periodDuration) {
+                try {
+                    parseDate(state.lastPeriod);
+                    switchTab('home');
+                } catch(e) {
+                    switchTab('onboarding');
+                }
+            } else {
+                switchTab('onboarding');
+            }
+
+            renderAll();
+
+            if ('Notification' in window && state.notificationsEnabled) {
+                if (Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+            }
+
+            console.log('🌸 FemCycle-Period and Ovulation Tracker ready!');
+            console.log('Current mode:', state.tryingToConceive ? '💕 Trying to Conceive' : '🚫 Preventing Pregnancy');
+            console.log(`Period: Days 1-${state.periodDuration}`);
+            console.log('Ovulation: Day 14 (Deep Red — Peak Fertility)');
+            console.log('Fertile window: 3 days before ovulation + ovulation + 3 days after ovulation');
+            console.log('Next period: Days 28-', 27 + state.periodDuration);
+            console.log(`Safe days: Days ${state.periodDuration + 1}-10 and Days 18-27`);
+            console.log('OVULATION NOTIFICATION: Will be sent on the exact ovulation date (Day 14)');
+            console.log('All alerts will say: "FemCycle predicts:"');
+
+        })();
+    </script>
+</body>
+</html>
